@@ -1,4 +1,4 @@
-import express from "express";
+import express, { json } from "express";
 import WebSocket from "ws";
 import http from "http";
 import { log } from "console";
@@ -16,18 +16,28 @@ app.get("/*", (_, res) => res.redirect("/"));
 
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
+const port = 3000;
 
-const handleListen = () => console.log(`Listening on http://localhost:3000`);
+const sockets = [];
 
 wss.on("connection", (socket) => {
-  socket.send("This is server.");
+  sockets.push(socket);
+  console.log(sockets);
   socket.on("close", () => {
     console.log("close");
   });
-  socket.on("message", (msg) => {
-    console.log(msg);
-    console.log(JSON.parse(msg));
+  socket.on("message", (handle) => {
+    const msg = JSON.parse(handle);
+
+    for (const socket of sockets) {
+      socket.send(JSON.stringify(msg));
+    }
+    // sockets.forEach((element) => {
+    //   element.send(JSON.stringify(msg));
+    // });
+
+    // socket.send(JSON.stringify(msg));
   });
 });
 
-server.listen(8080, handleListen);
+server.listen(port, () => console.log(`Listening on http://localhost:${port}`));
