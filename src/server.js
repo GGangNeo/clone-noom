@@ -18,25 +18,21 @@ const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 const port = 3000;
 
-const sockets = [];
+let sockets = [];
 
 wss.on("connection", (socket) => {
   sockets.push(socket);
-  console.log(sockets);
+  console.log("connect");
   socket.on("close", () => {
     console.log("close");
   });
   socket.on("message", (handle) => {
+    // console.log(handle);
     const msg = JSON.parse(handle);
 
     for (const socket of sockets) {
       socket.send(JSON.stringify(msg));
     }
-    // sockets.forEach((element) => {
-    //   element.send(JSON.stringify(msg));
-    // });
-
-    // socket.send(JSON.stringify(msg));
   });
 });
 
