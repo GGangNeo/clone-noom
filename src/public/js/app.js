@@ -4,10 +4,8 @@ const FORM_MESSAGE = document.getElementById("message");
 const NICK_INPUT = FORM_NICKNAME.querySelector("input");
 const FORM_INPUT = FORM_MESSAGE.querySelector("input");
 
-let nickname = "unknown";
-
-function makeMessage(nickname, message) {
-  const msg = { nickname, message };
+function makeMessage(type, payload) {
+  const msg = { type, payload };
   return JSON.stringify(msg);
 }
 
@@ -26,10 +24,9 @@ socket.addEventListener("error", (msg) => {
 });
 
 socket.addEventListener("message", (handle) => {
-  const data = JSON.parse(handle.data);
-  console.log(data);
+  console.log(handle);
   const li = document.createElement("li");
-  li.innerText = `${data.nickname} : ${data.message}`;
+  li.innerText = handle.data;
   UL.prepend(li);
 });
 
@@ -37,11 +34,12 @@ FORM_MESSAGE.addEventListener("submit", (event) => {
   event.preventDefault();
   const data = FORM_INPUT.value;
   FORM_INPUT.value = "";
-  socket.send(makeMessage(nickname, data));
+  socket.send(makeMessage("new_message", data));
 });
 
 FORM_NICKNAME.addEventListener("submit", (event) => {
   event.preventDefault();
-  nickname = NICK_INPUT.value;
+  const data = NICK_INPUT.value;
   NICK_INPUT.value = "";
+  socket.send(makeMessage("nickname", data));
 });

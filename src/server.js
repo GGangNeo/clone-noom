@@ -22,6 +22,7 @@ let sockets = [];
 
 wss.on("connection", (socket) => {
   sockets.push(socket);
+  socket["nickname"] = "Unknown";
   console.log("connect");
   socket.on("close", () => {
     console.log("close");
@@ -29,9 +30,15 @@ wss.on("connection", (socket) => {
   socket.on("message", (handle) => {
     // console.log(handle);
     const msg = JSON.parse(handle);
-
-    for (const socket of sockets) {
-      socket.send(JSON.stringify(msg));
+    switch (msg.type) {
+      case "new_message":
+        for (const aSocket of sockets) {
+          aSocket.send(`${socket.nickname} : ${msg.payload}`);
+        }
+        break;
+      case "nickname":
+        socket["nickname"] = msg.payload;
+        break;
     }
   });
 });
