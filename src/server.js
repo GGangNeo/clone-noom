@@ -19,6 +19,7 @@ const wsServer = SocketIO(server);
 const port = 3000;
 
 wsServer.on('connection', (socket) => {
+  socket['nickname'] = 'Unknown';
   socket.onAny((event) => {
     console.log(`Event Any : ${event}`);
   });
@@ -27,16 +28,21 @@ wsServer.on('connection', (socket) => {
       socket.join(data);
       cb();
       console.log(data);
-      socket.to(data).emit('join');
+      socket.to(data).emit('join', socket.nickname);
     })
     .on('disconnecting', () => {
       socket.rooms.forEach((element) => {
-        socket.to(element).emit('left');
+        socket.to(element).emit('left', socket.nickname);
       });
     })
     .on('new_message', (msg, data, cb) => {
-      socket.to(data).emit('new_message', msg);
+      socket.to(data).emit('new_message', `${socket.nickname} : ${msg}`);
       cb('message complete');
+    })
+    .on('nick', (data, cb) => {
+      socket['nickname'] = data;
+
+      cb('nickname saved');
     });
 });
 

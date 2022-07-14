@@ -4,7 +4,8 @@ const socket = io();
 const welcomeDiv = document.querySelector('#welcome');
 const welcomeForm = welcomeDiv.querySelector('form');
 const roomDiv = document.querySelector('#room');
-const roomForm = roomDiv.querySelector('form');
+const nickForm = document.querySelector(`#nick`);
+const msgForm = document.querySelector('#msg');
 
 roomDiv.hidden = true;
 let roomName;
@@ -32,9 +33,17 @@ welcomeForm.addEventListener('submit', (event) => {
     h3.innerText = `Room ${data}`;
     roomName = data;
 
-    roomForm.addEventListener('submit', (event) => {
+    nickForm.addEventListener('submit', (event) => {
       event.preventDefault();
-      const input = roomForm.querySelector('input');
+      const input = nickForm.querySelector('input');
+      const data = input.value;
+      input.value = '';
+      socket.emit('nick', data, backendDone);
+    });
+
+    msgForm.addEventListener('submit', (event) => {
+      event.preventDefault();
+      const input = msgForm.querySelector('input');
       const data = input.value;
       input.value = '';
       socket.emit('new_message', data, roomName, backendDone);
@@ -43,10 +52,10 @@ welcomeForm.addEventListener('submit', (event) => {
 });
 
 socket
-  .on('join', () => {
-    makeMessage('someone joined');
+  .on('join', (user) => {
+    makeMessage(`${user} joined`);
   })
-  .on('left', () => {
-    makeMessage('Bye!!');
+  .on('left', (user) => {
+    makeMessage(`${user} left`);
   })
   .on('new_message', makeMessage);
