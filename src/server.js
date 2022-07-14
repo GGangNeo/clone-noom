@@ -19,15 +19,20 @@ const wsServer = SocketIO(server);
 const port = 3000;
 
 wsServer.on('connection', (socket) => {
+  socket.onAny((event) => {
+    console.log(`Event Any : ${event}`);
+  });
   console.log(socket);
   socket.on('new_room', (data, cb) => {
+    console.log(socket.id);
+    console.log(socket.rooms);
+    socket.join(data);
+    console.log(socket.rooms);
+    cb();
+  });
+  socket.on('new_message', (data, cb) => {
     console.log(data);
-    setTimeout(() => {
-      /**
-       * something, taking a longtime....
-       */
-      cb('done');
-    }, 1000);
+    cb('message complete');
   });
 });
 
