@@ -22,16 +22,22 @@ wsServer.on('connection', (socket) => {
   socket.onAny((event) => {
     console.log(`Event Any : ${event}`);
   });
-  socket.on('new_room', (data, cb) => {
-    socket.join(data);
-    cb();
-    console.log(data);
-    socket.to(data).emit('join');
-  });
-  socket.on('new_message', (data, cb) => {
-    console.log(data);
-    cb('message complete');
-  });
+  socket
+    .on('new_room', (data, cb) => {
+      socket.join(data);
+      cb();
+      console.log(data);
+      socket.to(data).emit('join');
+    })
+    .on('disconnecting', () => {
+      socket.rooms.forEach((element) => {
+        socket.to(element).emit('left');
+      });
+    })
+    .on('new_message', (msg, data, cb) => {
+      socket.to(data).emit('new_message', msg);
+      cb('message complete');
+    });
 });
 
 server.listen(port, () => console.log(`Listening on http://localhost:${port}`));

@@ -7,6 +7,7 @@ const roomDiv = document.querySelector('#room');
 const roomForm = roomDiv.querySelector('form');
 
 roomDiv.hidden = true;
+let roomName;
 
 function backendDone(msg) {
   console.log(`The Backend msg: ${msg}`);
@@ -29,17 +30,23 @@ welcomeForm.addEventListener('submit', (event) => {
     roomDiv.hidden = false;
     const h3 = roomDiv.querySelector('h3');
     h3.innerText = `Room ${data}`;
+    roomName = data;
+
+    roomForm.addEventListener('submit', (event) => {
+      event.preventDefault();
+      const input = roomForm.querySelector('input');
+      const data = input.value;
+      input.value = '';
+      socket.emit('new_message', data, roomName, backendDone);
+    });
   });
 });
 
-roomForm.addEventListener('submit', (event) => {
-  event.preventDefault();
-  const input = roomForm.querySelector('input');
-  const data = input.value;
-  input.value = '';
-  socket.emit('new_message', data, backendDone);
-});
-
-socket.on('join', () => {
-  makeMessage('someone joined');
-});
+socket
+  .on('join', () => {
+    makeMessage('someone joined');
+  })
+  .on('left', () => {
+    makeMessage('Bye!!');
+  })
+  .on('new_message', makeMessage);
