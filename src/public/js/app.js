@@ -12,12 +12,19 @@ function backendDone(msg) {
   console.log(`The Backend msg: ${msg}`);
 }
 
+function makeMessage(msg) {
+  const ul = roomDiv.querySelector('ul');
+  const li = document.createElement('li');
+  li.innerText = msg;
+  ul.prepend(li);
+}
+
 welcomeForm.addEventListener('submit', (event) => {
   event.preventDefault();
   const input = welcomeForm.querySelector('input');
   const data = input.value;
   input.value = '';
-  socket.emit('new_room', { payload: data }, () => {
+  socket.emit('new_room', data, () => {
     welcomeDiv.hidden = true;
     roomDiv.hidden = false;
     const h3 = roomDiv.querySelector('h3');
@@ -30,5 +37,9 @@ roomForm.addEventListener('submit', (event) => {
   const input = roomForm.querySelector('input');
   const data = input.value;
   input.value = '';
-  socket.emit('new_message', { payload: data }, backendDone);
+  socket.emit('new_message', data, backendDone);
+});
+
+socket.on('join', () => {
+  makeMessage('someone joined');
 });

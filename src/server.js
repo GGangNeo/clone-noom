@@ -22,13 +22,11 @@ wsServer.on('connection', (socket) => {
   socket.onAny((event) => {
     console.log(`Event Any : ${event}`);
   });
-  console.log(socket);
   socket.on('new_room', (data, cb) => {
-    console.log(socket.id);
-    console.log(socket.rooms);
     socket.join(data);
-    console.log(socket.rooms);
     cb();
+    console.log(data);
+    socket.to(data).emit('join');
   });
   socket.on('new_message', (data, cb) => {
     console.log(data);
