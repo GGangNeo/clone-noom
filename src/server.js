@@ -1,6 +1,6 @@
 import express, { json } from 'express';
-import WebSocket from 'ws';
 import http from 'http';
+import SocketIO from 'socket.io';
 
 const app = express();
 
@@ -14,44 +14,12 @@ app.get('/', (_, res) => res.render('home'));
 app.get('/*', (_, res) => res.redirect('/'));
 
 const server = http.createServer(app);
-const wss = new WebSocket.Server({ server });
+const wsServer = SocketIO(server);
+
 const port = 3000;
 
-function makeMessage(type, payload) {
-  const msg = { type, payload };
-  return JSON.stringify(msg);
-}
-
-const sockets = [];
-
-wss.on('connection', (socket) => {
-  sockets.push(socket);
-  socket['nickname'] = 'Unknown';
-  console.log('connect');
-  socket.on('close', () => {
-    console.log('close');
-  });
-  socket.on('message', (handle) => {
-    // console.log(handle);
-    const msg = JSON.parse(handle);
-    switch (msg.type) {
-      case 'new_message':
-        for (const aSocket of sockets) {
-          aSocket.send(
-            makeMessage('new_message', `${socket.nickname} : ${msg.payload}`)
-          );
-        }
-        break;
-      case 'nickname':
-        if (socket.nickname !== 'Unknown' && socket.nickname !== msg.payload) {
-          socket.send(makeMessage('nickname', msg.payload));
-        }
-        socket['nickname'] = msg.payload;
-        break;
-      default:
-        break;
-    }
-  });
+wsServer.on('connection', (socket) => {
+  console.log(socket);
 });
 
 server.listen(port, () => console.log(`Listening on http://localhost:${port}`));
