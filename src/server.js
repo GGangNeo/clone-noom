@@ -20,6 +20,15 @@ const port = 3000;
 
 wsServer.on('connection', (socket) => {
   console.log(socket);
+  socket.on('new_room', (data, cb) => {
+    console.log(data);
+    setTimeout(() => {
+      /**
+       * something, taking a longtime....
+       */
+      cb('done');
+    }, 1000);
+  });
 });
 
 server.listen(port, () => console.log(`Listening on http://localhost:${port}`));
