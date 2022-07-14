@@ -38,7 +38,7 @@ welcomeForm.addEventListener('submit', (event) => {
       const input = nickForm.querySelector('input');
       const data = input.value;
       input.value = '';
-      socket.emit('nick', data, backendDone);
+      socket.emit('nick', data, roomName, backendDone);
     });
 
     msgForm.addEventListener('submit', (event) => {
@@ -52,10 +52,28 @@ welcomeForm.addEventListener('submit', (event) => {
 });
 
 socket
-  .on('join', (user) => {
+  .on('join', (user, newCount) => {
+    const h3 = roomDiv.querySelector('h3');
+    console.log(`new = ${newCount}`);
+    h3.innerText = `Room ${roomName} (${newCount})`;
     makeMessage(`${user} joined`);
   })
-  .on('left', (user) => {
+  .on('left', (user, newCount) => {
+    const h3 = roomDiv.querySelector('h3');
+    h3.innerText = `Room ${roomName} (${newCount})`;
     makeMessage(`${user} left`);
   })
-  .on('new_message', makeMessage);
+  .on('new_message', makeMessage)
+  .on('room_change', (rooms) => {
+    const ul = welcomeDiv.querySelector('ul');
+    ul.innerText = '';
+    if (ul.length === 0) return;
+
+    rooms.forEach((e) => {
+      const li = document.createElement('li');
+      const data = e;
+      li.innerText = data;
+      ul.prepend(li);
+    });
+  })
+  .on('nick_change', makeMessage);

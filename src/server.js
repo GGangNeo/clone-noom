@@ -1,3 +1,4 @@
+import { Console } from 'console';
 import express, { json } from 'express';
 import http from 'http';
 import SocketIO from 'socket.io';
@@ -18,6 +19,29 @@ const wsServer = SocketIO(server);
 
 const port = 3000;
 
+function findPublicRooms() {
+  // const sids= wsServer.sockets.adapter.sids;
+  // const rooms = wsServer.sockets.adapter.rooms;
+
+  const {
+    sockets: {
+      adapter: { sids, rooms },
+    },
+  } = wsServer;
+  const publicRooms = [];
+  rooms.forEach((_, key) => {
+    // room: public, private. sids: private room
+    if (sids.get(key) === undefined) {
+      publicRooms.push(key);
+    }
+  });
+  return publicRooms;
+}
+
+function countRoom(roomName) {
+  return wsServer.sockets.adapter.rooms.get(roomName)?.size;
+}
+
 wsServer.on('connection', (socket) => {
   socket['nickname'] = 'Unknown';
   socket.onAny((event) => {
@@ -28,20 +52,30 @@ wsServer.on('connection', (socket) => {
       socket.join(data);
       cb();
       console.log(data);
-      socket.to(data).emit('join', socket.nickname);
+      console.log(countRoom(data));
+      socket.to(data).emit('join', socket.nickname, countRoom(data));
+      wsServer.sockets.emit('room_change', findPublicRooms());
     })
     .on('disconnecting', () => {
       socket.rooms.forEach((element) => {
-        socket.to(element).emit('left', socket.nickname);
+        socket
+          .to(element)
+          .emit('left', socket.nickname, countRoom(element) - 1);
       });
+    })
+    .on('disconnect', () => {
+      wsServer.sockets.emit('room_change', findPublicRooms());
     })
     .on('new_message', (msg, data, cb) => {
       socket.to(data).emit('new_message', `${socket.nickname} : ${msg}`);
       cb('message complete');
     })
-    .on('nick', (data, cb) => {
+    .on('nick', (data, roomName, cb) => {
+      const prv = socket.nickname;
       socket['nickname'] = data;
-
+      socket
+        .to(roomName)
+        .emit('nick_change', `${prv} is changed to ${socket.nickname}`);
       cb('nickname saved');
     });
 });
