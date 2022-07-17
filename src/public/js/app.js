@@ -128,10 +128,7 @@ RtcEventHandler = {
   },
 };
 
-welcomeForm.addEventListener(
-  'submit',
-  connectionEventHandler.WelcomeSubmitHandle
-);
+welcomeForm.addEventListener('submit', RtcEventHandler.WelcomeSubmitHandle);
 
 /**
  * https://gwanwoodev.github.io/introduction-webrtc/
@@ -165,8 +162,21 @@ socket
     myPeerConnection.addIceCandidate(ice);
   });
 
+// webrtc defeat, sfu
+// npm i -g localtunner ==> lt --port 3000
 function makeConnection() {
-  myPeerConnection = new RTCPeerConnection();
+  myPeerConnection = new RTCPeerConnection({
+    iceServers: [
+      {
+        urls: [
+          'stun:stun.l.google.com:19302',
+          'stun:stun1.l.google.com:19302',
+          'stun:stun2.l.google.com:19302',
+          'stun:stun3.l.google.com:19302',
+        ],
+      },
+    ],
+  });
   myPeerConnection.addEventListener('icecandidate', RtcEventHandler.IceHandle);
   myPeerConnection.addEventListener(
     'addstream',
