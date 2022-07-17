@@ -13,6 +13,7 @@ let cameraOff = false;
 let myStream;
 let roomName;
 let myPeerConnection;
+let myDataChannel;
 
 async function getCameras() {
   try {
@@ -142,12 +143,26 @@ welcomeForm.addEventListener('submit', RtcEventHandler.WelcomeSubmitHandle);
 socket
   .on('welcome', async () => {
     // console.log('someone joined');
+    // main browser create datachannel
+    myDataChannel = myPeerConnection.createDataChannel('chat');
+    myDataChannel.addEventListener('message', (event) =>
+      console.log(event.data)
+    );
     const offer = await myPeerConnection.createOffer();
     myPeerConnection.setLocalDescription(offer);
     // send offer to joined browser
     socket.emit('offer', offer, roomName);
   })
   .on('offer', async (offer) => {
+    // joined browser register datachannel
+    myPeerConnection.addEventListener('datachannel', (event) => {
+      myDataChannel = event.channel;
+      myDataChannel.addEventListener('message', (event) => {
+        console.log(event);
+      });
+      myDataChannel.send('hi');
+    });
+
     myPeerConnection.setRemoteDescription(offer);
     const answer = await myPeerConnection.createAnswer();
     myPeerConnection.setLocalDescription(answer);
