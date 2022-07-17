@@ -4,10 +4,15 @@ const myFace = document.getElementById('myFace');
 const muteBtn = document.getElementById('mute');
 const cameraBtn = document.getElementById('camera');
 const camerasSelect = document.getElementById('cameras');
+const call = document.getElementById('call');
+
+call.hidden = true;
 
 let muted = false;
 let cameraOff = false;
 let myStream;
+let roomName;
+let myPeearConnection;
 
 async function getCameras() {
   try {
@@ -50,9 +55,7 @@ async function getMedia(deviceId) {
   }
 }
 
-getMedia();
-
-superEventHandler = {
+DeviceControlHandler = {
   handleMuteClick() {
     myStream
       .getAudioTracks()
@@ -65,7 +68,7 @@ superEventHandler = {
       muteBtn.innerText = 'Mute';
     }
   },
-  hadleCameraClick() {
+  handleCameraClick() {
     myStream
       .getVideoTracks()
       .forEach((track) => (track.enabled = !track.enabled));
@@ -78,7 +81,62 @@ superEventHandler = {
       cameraBtn.innerText = 'Turn Camera On';
     }
   },
+  async handleCameraChange() {
+    await getMedia();
+  },
 };
 
-muteBtn.addEventListener('click', superEventHandler.handleMuteClick);
-cameraBtn.addEventListener('click', superEventHandler.hadleCameraClick);
+muteBtn.addEventListener('click', DeviceControlHandler.handleMuteClick);
+cameraBtn.addEventListener('click', DeviceControlHandler.handleCameraClick);
+camerasSelect.addEventListener(
+  'input',
+  DeviceControlHandler.handleCameraChange
+);
+
+// Welcome Form
+const welcome = document.getElementById('welcome');
+const welcomeForm = welcome.querySelector('form');
+
+superEventHandler = {
+  WelcomeSubmitHandle(event) {
+    event.preventDefault();
+    const input = welcomeForm.querySelector('input');
+    socket.emit('join_room', input.value, async () => {
+      welcome.hidden = true;
+      call.hidden = false;
+      await getMedia();
+      makeConnection();
+    });
+    roomName = input.value;
+    input.value = '';
+  },
+};
+
+welcomeForm.addEventListener('submit', superEventHandler.WelcomeSubmitHandle);
+
+/**
+ * https://gwanwoodev.github.io/introduction-webrtc/
+ * getUserMedia()
+ * addStream() *old way  ===> makeConnection()
+ * createOffer()
+ * setLocalDescription()
+ * send offer ===>socket.on 'welcome'
+ */
+// Socket Code
+socket
+  .on('welcome', async () => {
+    // console.log('someone joined');
+    const offer = await myPeearConnection.createOffer();
+    myPeearConnection.setLocalDescription(offer);
+    socket.emit('offer', offer, roomName);
+  })
+  .on('offer', (offer) => {
+    console.log(offer);
+  });
+
+function makeConnection() {
+  myPeearConnection = new RTCPeerConnection();
+  myStream
+    .getTracks()
+    .forEach((track) => myPeearConnection.addTrack(track, myStream));
+}

@@ -17,5 +17,17 @@ app.get('/*', (_, res) => res.redirect('/'));
 const server = http.createServer(app);
 const wsServer = SocketIO(server);
 
+wsServer.on('connection', (socket) => {
+  socket
+    .on('join_room', (roomName, cbDone) => {
+      socket.join(roomName);
+      cbDone();
+      socket.to(roomName).emit('welcome');
+    })
+    .on('offer', (offer, roomName) => {
+      socket.to(roomName).emit('offer', offer);
+    });
+});
+
 const port = 3000;
 server.listen(port, () => console.log(`Listening on http://localhost:${port}`));
