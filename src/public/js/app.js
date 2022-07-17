@@ -12,7 +12,7 @@ let muted = false;
 let cameraOff = false;
 let myStream;
 let roomName;
-let myPeearConnection;
+let myPeerConnection;
 
 async function getCameras() {
   try {
@@ -82,7 +82,14 @@ DeviceControlHandler = {
     }
   },
   async handleCameraChange() {
-    await getMedia();
+    await getMedia(camerasSelect.value);
+    if (myPeerConnection) {
+      const videoTrack = myStream.getVideoTracks()[0];
+      const videoSender = myPeerConnection
+        .getSenders()
+        .find((sender) => sender.track.kind === 'video');
+      videoSender.replaceTrack(videoTrack);
+    }
   },
 };
 
@@ -97,22 +104,34 @@ camerasSelect.addEventListener(
 const welcome = document.getElementById('welcome');
 const welcomeForm = welcome.querySelector('form');
 
-superEventHandler = {
-  WelcomeSubmitHandle(event) {
+RtcEventHandler = {
+  async WelcomeSubmitHandle(event) {
     event.preventDefault();
     const input = welcomeForm.querySelector('input');
-    socket.emit('join_room', input.value, async () => {
-      welcome.hidden = true;
-      call.hidden = false;
-      await getMedia();
-      makeConnection();
-    });
+    welcome.hidden = true;
+    call.hidden = false;
+    await getMedia();
+    makeConnection();
+    socket.emit('join_room', input.value);
     roomName = input.value;
     input.value = '';
   },
+  IceHandle(data) {
+    console.log('sent candidate');
+    socket.emit('ice', data.candidate, roomName);
+  },
+  AddStreamHandle(data) {
+    const peerFace = document.getElementById('peerFace');
+    peerFace.srcObject = data.stream;
+    console.log(data.stream);
+    console.log(myStream);
+  },
 };
 
-welcomeForm.addEventListener('submit', superEventHandler.WelcomeSubmitHandle);
+welcomeForm.addEventListener(
+  'submit',
+  connectionEventHandler.WelcomeSubmitHandle
+);
 
 /**
  * https://gwanwoodev.github.io/introduction-webrtc/
@@ -126,17 +145,34 @@ welcomeForm.addEventListener('submit', superEventHandler.WelcomeSubmitHandle);
 socket
   .on('welcome', async () => {
     // console.log('someone joined');
-    const offer = await myPeearConnection.createOffer();
-    myPeearConnection.setLocalDescription(offer);
+    const offer = await myPeerConnection.createOffer();
+    myPeerConnection.setLocalDescription(offer);
+    // send offer to joined browser
     socket.emit('offer', offer, roomName);
   })
-  .on('offer', (offer) => {
-    console.log(offer);
+  .on('offer', async (offer) => {
+    myPeerConnection.setRemoteDescription(offer);
+    const answer = await myPeerConnection.createAnswer();
+    myPeerConnection.setLocalDescription(answer);
+    // send answer to host browser
+    socket.emit('answer', answer, roomName);
+  })
+  .on('answer', (answer) => {
+    // host browser set the description
+    myPeerConnection.setRemoteDescription(answer);
+  })
+  .on('ice', (ice) => {
+    myPeerConnection.addIceCandidate(ice);
   });
 
 function makeConnection() {
-  myPeearConnection = new RTCPeerConnection();
+  myPeerConnection = new RTCPeerConnection();
+  myPeerConnection.addEventListener('icecandidate', RtcEventHandler.IceHandle);
+  myPeerConnection.addEventListener(
+    'addstream',
+    RtcEventHandler.AddStreamHandle
+  );
   myStream
     .getTracks()
-    .forEach((track) => myPeearConnection.addTrack(track, myStream));
+    .forEach((track) => myPeerConnection.addTrack(track, myStream));
 }

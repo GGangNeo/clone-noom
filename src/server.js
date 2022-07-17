@@ -19,13 +19,18 @@ const wsServer = SocketIO(server);
 
 wsServer.on('connection', (socket) => {
   socket
-    .on('join_room', (roomName, cbDone) => {
+    .on('join_room', (roomName) => {
       socket.join(roomName);
-      cbDone();
       socket.to(roomName).emit('welcome');
     })
     .on('offer', (offer, roomName) => {
       socket.to(roomName).emit('offer', offer);
+    })
+    .on('answer', (answer, roomName) => {
+      socket.to(roomName).emit('answer', answer);
+    })
+    .on('ice', (ice, roomName) => {
+      socket.to(roomName).emit('ice', ice);
     });
 });
 
