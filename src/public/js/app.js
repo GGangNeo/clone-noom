@@ -5,6 +5,7 @@ const muteBtn = document.getElementById('mute');
 const cameraBtn = document.getElementById('camera');
 const camerasSelect = document.getElementById('cameras');
 const call = document.getElementById('call');
+const messageForm = document.getElementById('message');
 
 call.hidden = true;
 
@@ -14,6 +15,7 @@ let myStream;
 let roomName;
 let myPeerConnection;
 let myDataChannel;
+let room_size = null;
 
 async function getCameras() {
   try {
@@ -56,7 +58,7 @@ async function getMedia(deviceId) {
   }
 }
 
-DeviceControlHandler = {
+const DeviceControlHandler = {
   handleMuteClick() {
     myStream
       .getAudioTracks()
@@ -105,16 +107,29 @@ camerasSelect.addEventListener(
 const welcome = document.getElementById('welcome');
 const welcomeForm = welcome.querySelector('form');
 
-RtcEventHandler = {
+const RtcEventHandler = {
   async WelcomeSubmitHandle(event) {
     event.preventDefault();
     const input = welcomeForm.querySelector('input');
-    welcome.hidden = true;
-    call.hidden = false;
-    await getMedia();
-    makeConnection();
-    socket.emit('join_room', input.value);
-    roomName = input.value;
+    console.log(room_size);
+    if (room_size <= 1) {
+      welcome.hidden = true;
+      call.hidden = false;
+      await getMedia();
+      makeConnection();
+      socket.emit('join_room', input.value);
+      roomName = input.value;
+      input.value = '';
+      messageForm.addEventListener('submit', (event) => {
+        event.preventDefault();
+        const input = messageForm.querySelector('input');
+        const message = input.value;
+        makeMessage('me', message);
+        if (myDataChannel) myDataChannel.send(message);
+      });
+    } else {
+      alert('could not enter the room.');
+    }
     input.value = '';
   },
   IceHandle(data) {
@@ -131,6 +146,26 @@ RtcEventHandler = {
 
 welcomeForm.addEventListener('submit', RtcEventHandler.WelcomeSubmitHandle);
 
+const MessageHandler = {
+  Createdhandle(event) {
+    makeMessage('unknown', event.data);
+  },
+  Joinedhandle(event) {
+    console.log('join');
+    myDataChannel = event.channel;
+    myDataChannel.addEventListener('message', (event) => {
+      makeMessage('unknown', event.data);
+    });
+    myDataChannel.send('unknown join this channel');
+  },
+};
+
+function makeMessage(name, msg) {
+  const messageList = document.getElementById('messageList');
+  const li = document.createElement('li');
+  li.innerText = `${name} : ${msg}`;
+  messageList.prepend(li);
+}
 /**
  * https://gwanwoodev.github.io/introduction-webrtc/
  * getUserMedia()
@@ -142,12 +177,10 @@ welcomeForm.addEventListener('submit', RtcEventHandler.WelcomeSubmitHandle);
 // Socket Code
 socket
   .on('welcome', async () => {
-    // console.log('someone joined');
+    console.log('someone joined');
     // main browser create datachannel
     myDataChannel = myPeerConnection.createDataChannel('chat');
-    myDataChannel.addEventListener('message', (event) =>
-      console.log(event.data)
-    );
+    myDataChannel.addEventListener('message', MessageHandler.Createdhandle);
     const offer = await myPeerConnection.createOffer();
     myPeerConnection.setLocalDescription(offer);
     // send offer to joined browser
@@ -155,13 +188,10 @@ socket
   })
   .on('offer', async (offer) => {
     // joined browser register datachannel
-    myPeerConnection.addEventListener('datachannel', (event) => {
-      myDataChannel = event.channel;
-      myDataChannel.addEventListener('message', (event) => {
-        console.log(event);
-      });
-      myDataChannel.send('hi');
-    });
+    myPeerConnection.addEventListener(
+      'datachannel',
+      MessageHandler.Joinedhandle
+    );
 
     myPeerConnection.setRemoteDescription(offer);
     const answer = await myPeerConnection.createAnswer();
@@ -175,8 +205,11 @@ socket
   })
   .on('ice', (ice) => {
     myPeerConnection.addIceCandidate(ice);
+  })
+  .on('denied', () => alert('Could not enter the room.'))
+  .on('room_num', (num) => {
+    room_size = num;
   });
-
 // webrtc defeat, sfu
 // npm i -g localtunner ==> lt --port 3000
 function makeConnection() {
